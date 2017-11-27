@@ -30,6 +30,7 @@ public class test {
 	
 	private static IndexWriter w;
 	
+	//returns a Document for the IndexWriter given a File
 	public static Document getDocument(File f) throws Exception {
 		  Document doc = new Document();
 		  Scanner scan = new Scanner(f).useDelimiter("\\A");
@@ -38,6 +39,7 @@ public class test {
 		  scan.close();
 		  doc.add(contents);
 		  doc.add(filename);
+		  System.out.println("'" + f.getName() + "'" + " parsed");
 		  return doc;
 	}
 	
