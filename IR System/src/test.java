@@ -5,6 +5,9 @@ import java.io.IOException;
 import java.io.Reader;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.Arrays;
+import java.util.Comparator;
+import java.util.Date;
 import java.util.Iterator;
 import java.util.Scanner;
 
@@ -28,6 +31,9 @@ import org.apache.lucene.search.MatchAllDocsQuery;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.ScoreDoc;
 import org.apache.lucene.search.TopDocs;
+import org.apache.lucene.search.similarities.BM25Similarity;
+import org.apache.lucene.search.similarities.ClassicSimilarity;
+import org.apache.lucene.search.similarities.TFIDFSimilarity;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.FSDirectory;
 import org.apache.lucene.store.LockObtainFailedException;
@@ -74,16 +80,22 @@ public class test {
 			}
 		} else {
 			System.out.println("first argument needs to be a directory");
+			System.exit(-1);
 		}
+	}
+	
+	public static Date getLastModified(File directory) {
+	    File[] files = directory.listFiles();
+	    if (files.length == 0) return new Date(directory.lastModified());
+	    Arrays.sort(files, new Comparator<File>() {
+	        public int compare(File o1, File o2) {
+	            return new Long(o2.lastModified()).compareTo(o1.lastModified()); //latest 1st
+	        }});
+	    return new Date(files[0].lastModified());
 	}
 
 	public static void main(String[] args) throws Exception {
-		// if (args.length != 4) {
-		// System.out.println("insufficient Arguments");
-		// System.exit(-1);
-		// }
-		// queries that are longer than one word?
-		if (args.length <= 4) {
+		if (args.length < 4) {
 			System.out.println("Please type all four required arguments");
 			System.exit(-1);
 		}
@@ -105,9 +117,29 @@ public class test {
 		for(int i=0; i<indexdir.listAll().length; i++) {
 //			if()
 		}
+		
+		IndexWriterConfig config = new IndexWriterConfig(analyzer);
+		
+		//initialize reader and searcher
+		IndexReader indexReader = DirectoryReader.open(indexdir);
+		IndexSearcher searcher = new IndexSearcher(indexReader);
+		if(args[2].equals("OK")) {
+			BM25Similarity bm = new BM25Similarity();
+			config.setSimilarity(bm);
+			searcher.setSimilarity(bm);
+		}
+		else if(args[2].equals("VS")){
+			ClassicSimilarity classic = new ClassicSimilarity();
+			config.setSimilarity(classic);
+			searcher.setSimilarity(classic);
+		}
+		else {
+			System.out.println("Ranking Model can only be 'VS' for Vector-Space-Model or 'OK'for Okapi BM25");
+			System.exit(-1);
+		}
+		
 		if (indexdir.listAll().length == 0) {
 			System.out.println("creating new index...");
-			IndexWriterConfig config = new IndexWriterConfig(analyzer);
 			w = new IndexWriter(indexdir, config);
 
 			searchSubDirectories(directory);
@@ -125,9 +157,6 @@ public class test {
 		Query mfquery = mfqp.parse(queryStr);
 		System.out.println("with MultiFieldQueryParser to:\t" + mfquery.toString());
 
-		// Searching
-		IndexReader indexReader = DirectoryReader.open(indexdir);
-		IndexSearcher searcher = new IndexSearcher(indexReader);
 		System.out.println("--------Searching:---------");
 
 		TopDocs hits = searcher.search(mfquery, Integer.MAX_VALUE);
