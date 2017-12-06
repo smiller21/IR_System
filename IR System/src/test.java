@@ -1,43 +1,27 @@
-import java.io.Console;
 import java.io.File;
-import java.io.FileReader;
-import java.io.IOException;
-import java.io.Reader;
-import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.Arrays;
 import java.util.Comparator;
 import java.util.Date;
 import java.util.Iterator;
-import java.util.Scanner;
 
-import org.apache.lucene.analysis.Analyzer;
-import org.apache.lucene.analysis.Tokenizer;
-import org.apache.lucene.analysis.standard.StandardAnalyzer;
 import org.apache.lucene.analysis.en.EnglishAnalyzer; //contains Stemming for English
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.Field.Store;
 import org.apache.lucene.document.TextField;
-import org.apache.lucene.index.CorruptIndexException;
 import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.IndexWriterConfig;
 import org.apache.lucene.queryparser.classic.MultiFieldQueryParser;
-import org.apache.lucene.queryparser.classic.QueryParser;
 import org.apache.lucene.search.IndexSearcher;
-import org.apache.lucene.search.MatchAllDocsQuery;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.ScoreDoc;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.search.similarities.BM25Similarity;
 import org.apache.lucene.search.similarities.ClassicSimilarity;
-import org.apache.lucene.search.similarities.TFIDFSimilarity;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.FSDirectory;
-import org.apache.lucene.store.LockObtainFailedException;
-import org.apache.lucene.store.RAMDirectory;
 import org.jsoup.Jsoup;
 
 public class test {
@@ -111,64 +95,67 @@ public class test {
 		// initiate analyzer and IndexWriter
 		EnglishAnalyzer analyzer = new EnglishAnalyzer();
 		Directory indexdir = FSDirectory.open(index_file.toPath());
-
-		// if there is no index in the index_folder, create one
-		int filecount=0;
-		for(int i=0; i<indexdir.listAll().length; i++) {
-//			if()
-		}
-		
 		IndexWriterConfig config = new IndexWriterConfig(analyzer);
 		
-		//initialize reader and searcher
-		IndexReader indexReader = DirectoryReader.open(indexdir);
-		IndexSearcher searcher = new IndexSearcher(indexReader);
-		if(args[2].equals("OK")) {
+		//set IndexWriter ranking model
+		if(ranking_model.equals("OK")) {
 			BM25Similarity bm = new BM25Similarity();
 			config.setSimilarity(bm);
-			searcher.setSimilarity(bm);
 		}
-		else if(args[2].equals("VS")){
+		else if(ranking_model.equals("VS")){
 			ClassicSimilarity classic = new ClassicSimilarity();
 			config.setSimilarity(classic);
-			searcher.setSimilarity(classic);
 		}
 		else {
 			System.out.println("Ranking Model can only be 'VS' for Vector-Space-Model or 'OK'for Okapi BM25");
 			System.exit(-1);
 		}
-		
+
+		//check if index is empty and create a new one
 		if (indexdir.listAll().length == 0) {
 			System.out.println("creating new index...");
 			w = new IndexWriter(indexdir, config);
-
 			searchSubDirectories(directory);
 			w.close();
 		}
+		//or use the existing index
 		else {
 			System.out.println("found an index in the index_folder");
 		}
+		
+		//initialize reader and searcher
+		IndexReader indexReader = DirectoryReader.open(indexdir);
+		IndexSearcher searcher = new IndexSearcher(indexReader);
+		
+		//set searcher ranking model
+		if(ranking_model.equals("OK")) {
+			BM25Similarity bm = new BM25Similarity();
+			searcher.setSimilarity(bm);
+		}
+		else if(ranking_model.equals("VS")){
+			ClassicSimilarity classic = new ClassicSimilarity();
+			searcher.setSimilarity(classic);
+		}
 
-		// parsing the query
+		//initialize the parser
 		String[] fields = { "title", "filename", "body" };
 		MultiFieldQueryParser mfqp = new MultiFieldQueryParser(fields, analyzer);
-		System.out.println("Parsing the QueryString:\t" + queryStr);
+		System.out.println("Parsing and Stemming the QueryString:\t" + queryStr);
 
+		//parse query string
 		Query mfquery = mfqp.parse(queryStr);
-		System.out.println("with MultiFieldQueryParser to:\t" + mfquery.toString());
-
+		System.out.println("with MultiFieldQueryParser and EnglishAnalyzer to: \n" + mfquery.toString());
 		System.out.println("--------Searching:---------");
 
+		//calculate scores
 		TopDocs hits = searcher.search(mfquery, Integer.MAX_VALUE);
 		System.out.println("there are " + hits.totalHits + " hits:");
-		System.out.println("\tDoc \t\tScore \t\t\tFilename");
+		System.out.println("\tRank \t\tTitle \t\tScore \t\t\tPath ");    //TODO: add summary
 		for (ScoreDoc hit : hits.scoreDocs) {
 			System.out.println("\t" + hit.doc + "\t\t" + hit.score + "\t\t"
 					+ indexReader.document(hit.doc).getField("filename").stringValue());
-
 		}
 
 		System.out.println("---------------------------");
-
 	}
 }
