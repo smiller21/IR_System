@@ -1,11 +1,6 @@
 package ir_package;
 import java.io.File;
 import java.io.IOException;
-import java.util.Arrays;
-import java.util.Comparator;
-import java.util.Date;
-import java.util.Formatter;
-import java.util.Iterator;
 import java.util.Scanner;
 
 import org.apache.lucene.analysis.en.EnglishAnalyzer; //contains Stemming for English
@@ -19,7 +14,6 @@ import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.IndexWriterConfig;
 
 import org.apache.lucene.queryparser.classic.MultiFieldQueryParser;
-import org.apache.lucene.queryparser.classic.QueryParser;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.ScoreDoc;
@@ -29,7 +23,6 @@ import org.apache.lucene.search.highlight.Highlighter;
 import org.apache.lucene.search.highlight.QueryScorer;
 import org.apache.lucene.search.highlight.SimpleFragmenter;
 import org.apache.lucene.search.highlight.SimpleHTMLFormatter;
-import org.apache.lucene.search.highlight.SimpleSpanFragmenter;
 import org.apache.lucene.search.similarities.BM25Similarity;
 import org.apache.lucene.search.similarities.ClassicSimilarity;
 import org.apache.lucene.store.Directory;
@@ -100,7 +93,7 @@ public class IR_System {
 			if(answer.equals("y")) {
 			}
 			else {
-				System.out.println("next time: choose a different index folder that doesn't contain an index or contains the index you want to use");
+				System.err.println("Please choose a different index folder to avoid index conflicts.");
 				System.exit(-1);
 			}
 		}
