@@ -1,5 +1,6 @@
+package ir_package;
 import java.io.File;
-
+import java.io.IOException;
 import java.util.Arrays;
 import java.util.Comparator;
 import java.util.Date;
@@ -35,7 +36,7 @@ import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.FSDirectory;
 import org.jsoup.Jsoup;
 
-public class test {
+public class IR_System {
 
 	private static IndexWriter w;
 
@@ -48,11 +49,9 @@ public class test {
 
 		Field title = new TextField("title", docjsoup.getElementsByTag("title").text(), Store.YES);
 		Field path = new TextField("path", f.getAbsolutePath(), Store.YES);
-		Field filename = new TextField("filename", f.getName(), Store.YES);
 		Field body = new TextField("body", docjsoup.getElementsByTag("body").text(), Store.YES);
 
 		doc.add(title);
-		doc.add(filename);
 		doc.add(body);
 		doc.add(path);
 
@@ -80,16 +79,32 @@ public class test {
 			System.exit(-1);
 		}
 	}
-
-	// public static Date getLastModified(File directory) {
-	// File[] files = directory.listFiles();
-	// if (files.length == 0) return new Date(directory.lastModified());
-	// Arrays.sort(files, new Comparator<File>() {
-	// public int compare(File o1, File o2) {
-	// return new Long(o2.lastModified()).compareTo(o1.lastModified()); //latest 1st
-	// }});
-	// return new Date(files[0].lastModified());
-	// }
+	
+	public static void ReuseOrCreateIndex(File documentdir, Directory indexdir, EnglishAnalyzer analyzer) throws IOException, Exception {
+		// check whether an index already exists and create a new one...
+		if (!DirectoryReader.indexExists(indexdir)){
+			System.out.println("creating new index...");
+			IndexWriterConfig config = new IndexWriterConfig(analyzer);
+			w = new IndexWriter(indexdir, config);
+			searchSubDirectories(documentdir);
+			w.close();
+		}
+		// ...or use the existing index
+		else {
+			System.out.println("found an index in the index_folder");
+			System.out.println("make sure that your document collection didn't changed or was modified");
+			System.out.println("Do you want to use this index? [y/n]");
+			Scanner s = new Scanner(System.in);
+			String answer = s.nextLine();
+			s.close();
+			if(answer.equals("y")) {
+			}
+			else {
+				System.out.println("next time: choose a different index folder that doesn't contain an index or contains the index you want to use");
+				System.exit(-1);
+			}
+		}
+	}
 
 	public static void main(String[] args) throws Exception {
 		if (args.length < 4) {
@@ -105,39 +120,17 @@ public class test {
 		for (int i = 3; i < args.length; i++)
 			queryStr += args[i] + " ";
 
-		// initiate analyzer and IndexWriter
+		// initiate analyzer
 		EnglishAnalyzer analyzer = new EnglishAnalyzer();
-		Directory indexdir = FSDirectory.open(index_file.toPath());
-		IndexWriterConfig config = new IndexWriterConfig(analyzer);
+		Directory index_dir = FSDirectory.open(index_file.toPath());
 		
 		BM25Similarity bm = new BM25Similarity();
 		ClassicSimilarity classic = new ClassicSimilarity();
 
-		// check if index is empty and create a new one
-		if (indexdir.listAll().length == 0) {
-			System.out.println("creating new index...");
-			w = new IndexWriter(indexdir, config);
-			searchSubDirectories(directory);
-			w.close();
-		}
-		// or use the existing index
-		else {
-			System.out.println("found an index in the index_folder");
-			System.out.println("make sure that your document collection didn't changed or was modified");
-			System.out.println("Do you want to use this index? [y/n]");
-			Scanner s = new Scanner(System.in);
-			String answer = s.nextLine();
-			s.close();
-			if(answer.equals("y")) {
-			}
-			else {
-				System.out.println("next time: choose a different index folder that doesn't contain an index or contains the index you want to use");
-				System.exit(-1);
-			}
-		}
-
+		ReuseOrCreateIndex(directory, index_dir, analyzer);
+		
 		// initialize reader and searcher
-		IndexReader indexReader = DirectoryReader.open(indexdir);
+		IndexReader indexReader = DirectoryReader.open(index_dir);
 		IndexSearcher searcher = new IndexSearcher(indexReader);
 
 		// set searcher ranking model
@@ -154,15 +147,13 @@ public class test {
 		String[] fields = { "title", "body" };
 		MultiFieldQueryParser mfqp = new MultiFieldQueryParser(fields, analyzer);
 		
-		// parse query string
-		Query mfquery = mfqp.parse(queryStr);
+		Query mfquery = mfqp.parse(queryStr);	// parse query string
 
-		// calculate scores
+		// calculate scores and highlight
 		TopDocs hits = searcher.search(mfquery, 10);
 
-		// Highlighting
 		// initializing a Formatter, QueryScorer and Highlighter
-		SimpleHTMLFormatter formatter = new SimpleHTMLFormatter("", ""); // using no tags because output in console
+		SimpleHTMLFormatter formatter = new SimpleHTMLFormatter("", ""); // using empty strings to avoid HTML-tags in the Output
 		QueryScorer scorer = new QueryScorer(mfquery);
 		Highlighter highlighter = new Highlighter(formatter, scorer);
 		
@@ -172,15 +163,15 @@ public class test {
 		// set fragmenter to highlighter
 		highlighter.setTextFragmenter(fragmenter);
 		
-		// search results output
-		System.out.println("---Top 10--------Searching results-------Query: "+queryStr+"------");
+		// rank and print results
+		System.out.println("there are " + hits.totalHits + " hits total:");
+		System.out.println("--- Top 10 search results ------- Query: "+queryStr+"------");
 		int rank = 1;
-		for (ScoreDoc hit : hits.scoreDocs) {
-			
+		for (ScoreDoc hit : hits.scoreDocs) {			
 			Document doc = indexReader.document(hit.doc);
 			System.out.println("Rank \tTitle");
 			System.out.println(rank + "\t" + doc.get("title") + "\t");
-			rank++;
+			rank++;										//documents are already sorted by rank
 			System.out.println("\tSummary");
 			String bodyStr = doc.get("body");
 			String[] frags = highlighter.getBestFragments(analyzer, "body", bodyStr, 3); // the best 3 fragments in the
@@ -194,4 +185,3 @@ public class test {
 		}
 	}
 }
-
