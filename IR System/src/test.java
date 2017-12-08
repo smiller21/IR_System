@@ -1,8 +1,10 @@
 import java.io.File;
+
 import java.util.Arrays;
 import java.util.Comparator;
 import java.util.Date;
 import java.util.Iterator;
+import javax.swing.JTable;
 
 import org.apache.lucene.analysis.en.EnglishAnalyzer; //contains Stemming for English
 import org.apache.lucene.document.Document;
@@ -36,12 +38,14 @@ public class test {
 		Document doc = new Document();
 
 		Field title = new TextField("title", docjsoup.getElementsByTag("title").text(), Store.YES);
+		Field path = new TextField("path", f.getAbsolutePath(), Store.YES);
 		Field filename = new TextField("filename", f.getName(), Store.YES);
 		Field body = new TextField("body", docjsoup.getElementsByTag("body").text(), Store.YES);
 
 		doc.add(title);
 		doc.add(filename);
 		doc.add(body);
+		doc.add(path);
 
 		System.out.println("'" + f.getName() + "'" + " parsed");
 
@@ -149,13 +153,14 @@ public class test {
 
 		//calculate scores
 		TopDocs hits = searcher.search(mfquery, Integer.MAX_VALUE);
-		System.out.println("there are " + hits.totalHits + " hits:");
-		System.out.println("\tRank \t\tTitle \t\tScore \t\t\tPath ");    //TODO: add summary
+		System.out.println("there are " + hits.totalHits + " hits:"); //TODO: add summary
+		System.out.format("%-10.10s \t %-30.30s \t %-15.15s \t %-100.100s", "Rank", "Title", "Score", "Path");
 		for (ScoreDoc hit : hits.scoreDocs) {
-			System.out.println("\t" + hit.doc + "\t\t" + hit.score + "\t\t"
-					+ indexReader.document(hit.doc).getField("filename").stringValue());
+			System.out.format("\n%-10d \t %-30.30s \t %-15.15s \t %-100.100s", 
+					hit.doc, indexReader.document(hit.doc).getField("filename").stringValue(), 
+					hit.score, indexReader.document(hit.doc).getField("path").stringValue());
 		}
 
-		System.out.println("---------------------------");
+		System.out.println("\n---------------------------");
 	}
 }
