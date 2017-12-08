@@ -6,5 +6,7 @@
 	<classpathentry kind="lib" path="lucene-core-7.1.0.jar"/>
 	<classpathentry kind="lib" path="lucene-analyzers-common-7.1.0.jar"/>
 	<classpathentry kind="lib" path="lucene-queryparser-7.1.0.jar"/>
+	<classpathentry kind="lib" path="lucene-highlighter-7.1.0.jar"/>
+	<classpathentry kind="lib" path="lucene-memory-7.1.0.jar"/>
 	<classpathentry kind="output" path="bin"/>
 </classpath>
